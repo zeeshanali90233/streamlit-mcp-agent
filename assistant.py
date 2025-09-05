@@ -30,7 +30,7 @@ def send_email(to: str, subject: str, body: str) -> str:
 # Run MCP server in a background thread (so Streamlit can continue)
 def start_mcp():
     def run():
-        mcp.run(transport="http", port=8000)
+        mcp.run(transport="http", port=9000)
     thread = threading.Thread(target=run, daemon=True)
     thread.start()
 
@@ -39,7 +39,7 @@ start_mcp()
 # ------------------------------
 # 2. Setup MCP Client
 # ------------------------------
-client = Client("http://localhost:8000/mcp")
+client = Client("http://localhost:9000/mcp")
 
 async def call_mcp_tool(tool_name: str, **kwargs):
     async with client:
