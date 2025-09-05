@@ -103,5 +103,5 @@ helpful_assistant = create_react_agent(
     model=llm,
     tools=tools,
     checkpointer=memory,
-    system_message="You are a helpful assistant."
+    prompt="You are a helpful assistant."
 )
