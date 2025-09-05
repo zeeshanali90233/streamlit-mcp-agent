@@ -6,6 +6,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.prebuilt import create_react_agent
 from langgraph.checkpoint.memory import InMemorySaver
 from langchain.tools import BaseTool
+import streamlit as st
 
 # ------------------------------
 # 1. Define MCP Server
@@ -28,11 +29,13 @@ def send_email(to: str, subject: str, body: str) -> str:
     return f"Sent email to {to} with subject '{subject}' and body '{body}'!"
 
 # Run MCP server in a background thread (so Streamlit can continue)
+@st.cache_resource
 def start_mcp():
     def run():
         mcp.run(transport="http", port=9000)
     thread = threading.Thread(target=run, daemon=True)
     thread.start()
+    return True  # just a marker
 
 start_mcp()
 
