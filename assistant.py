@@ -1,11 +1,44 @@
 import asyncio
 import json
-from fastmcp import Client
+import threading
+from fastmcp import Client, FastMCP
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.prebuilt import create_react_agent
 from langgraph.checkpoint.memory import InMemorySaver
 from langchain.tools import BaseTool
 
+# ------------------------------
+# 1. Define MCP Server
+# ------------------------------
+mcp = FastMCP("My MCP Server")
+
+@mcp.tool()
+def add(a: int, b: int) -> int:
+    """Return sum of two numbers."""
+    return a + b
+
+@mcp.tool()
+def greet(name: str) -> str:
+    """Return a greeting."""
+    return f"Hello, {name}!"
+
+@mcp.tool()
+def send_email(to: str, subject: str, body: str) -> str:
+    """Simulate sending an email."""
+    return f"Sent email to {to} with subject '{subject}' and body '{body}'!"
+
+# Run MCP server in a background thread (so Streamlit can continue)
+def start_mcp():
+    def run():
+        mcp.run(transport="http", port=8000)
+    thread = threading.Thread(target=run, daemon=True)
+    thread.start()
+
+start_mcp()
+
+# ------------------------------
+# 2. Setup MCP Client
+# ------------------------------
 client = Client("http://localhost:8000/mcp")
 
 async def call_mcp_tool(tool_name: str, **kwargs):
@@ -16,10 +49,13 @@ async def get_all_tools():
     async with client:
         return await client.list_tools()
 
-# Get available tools
+# Get available tools from the MCP server
 mcp_tools = asyncio.run(get_all_tools())
 print(f"Available MCP tools: {[tool.name for tool in mcp_tools]}")
 
+# ------------------------------
+# 3. Setup LLM
+# ------------------------------
 llm = ChatGoogleGenerativeAI(
     google_api_key="AIzaSyA-AxGGObm4t_2dOGhtLx5aYv6AeKjfjfY",
     model="gemini-2.5-flash",
@@ -28,6 +64,9 @@ llm = ChatGoogleGenerativeAI(
 
 memory = InMemorySaver()
 
+# ------------------------------
+# 4. Wrap MCP tools for LangGraph
+# ------------------------------
 class MCPTool(BaseTool):
     """Wrapper for an MCP tool to be used in LangGraph ReAct."""
     name: str
@@ -57,9 +96,12 @@ tools = [
     for tool in mcp_tools
 ]
 
+# ------------------------------
+# 5. Create ReAct Agent
+# ------------------------------
 helpful_assistant = create_react_agent(
     model=llm,
     tools=tools,
     checkpointer=memory,
-    prompt="You are a helpful assistant."
+    system_message="You are a helpful assistant."
 )
